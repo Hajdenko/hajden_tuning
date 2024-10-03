@@ -239,7 +239,7 @@ AddEventHandler('vehicleTuning:applyModification', function(modType, level, colo
 
     if success then
         _c += 1
-        Config.Notify('success', 'Modification applied successfully!')
+        if _c == 1 then Config.Notify('success', 'Modification applied successfully!') end
         if _c >= 2 then _c = 0 end
         
         local mods = getAvailableModifications()
