@@ -220,6 +220,7 @@ lib.callback.register('hajden_tuning:openTuning', function(source)
     createModificationMenu(mods)
 end)
 
+local _c = 0
 RegisterNetEvent('vehicleTuning:applyModification')
 AddEventHandler('vehicleTuning:applyModification', function(modType, level, colorData)
     local success = false
@@ -237,7 +238,10 @@ AddEventHandler('vehicleTuning:applyModification', function(modType, level, colo
     end
 
     if success then
+        _c += 1
         Config.Notify('success', 'Modification applied successfully!')
+        if _c >= 2 then _c = 0 end
+        
         local mods = getAvailableModifications()
         createModificationMenu(mods)
     else
