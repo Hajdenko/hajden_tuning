@@ -2,6 +2,23 @@ local function isDriver()
     return cache.seat == -1
 end
 
+local function isAtTuningLocation()
+    if not Config.UseLocationRestrictions then
+        return true -- If location restrictions are disabled, return true
+    end
+    
+    local playerCoords = GetEntityCoords(cache.ped)
+    
+    for _, location in ipairs(Config.TuningLocations) do
+        local distance = #(playerCoords - location.coords)
+        if distance <= location.radius then
+            return true, location.name
+        end
+    end
+    
+    return false
+end
+
 local function getAvailableModifications()
     local vehicle = cache.vehicle
     if not vehicle then return {} end
@@ -18,6 +35,7 @@ local function getAvailableModifications()
                 end
             end
         elseif modType == 'turbo' then
+            -- Check if turbo is available for this vehicle
             if IsToggleModOn(vehicle, 18) or GetNumVehicleMods(vehicle, 18) > 0 then
                 mods[modType] = IsToggleModOn(vehicle, 18) and 1 or 0
             end
@@ -59,7 +77,11 @@ local function applyModification(modType, level, colorData)
     else
         local modTypeIndex = Config.ModTypeIndexes[modType]
         if modTypeIndex then
-            SetVehicleMod(vehicle, modTypeIndex, level - 1, false)
+            if modType == 'turbo' then
+                ToggleVehicleMod(vehicle, modTypeIndex, level == 1)
+            else
+                SetVehicleMod(vehicle, modTypeIndex, level - 1, false)
+            end
             return true
         end
     end
@@ -74,8 +96,13 @@ end
 
 local function createModificationMenu(mods)
     local options = {}
+
     for modType, maxLevel in pairs(mods) do
         local currentLevel = GetVehicleMod(cache.vehicle, Config.ModTypeIndexes[modType]) + 1
+        if modType == 'turbo' then
+            currentLevel = IsToggleModOn(cache.vehicle, Config.ModTypeIndexes[modType]) and 1 or 0
+        end
+        
         local levelCount = Config.MaxLevels[modType] or maxLevel
 
         local progressPercent = -21
@@ -215,6 +242,17 @@ lib.callback.register('hajden_tuning:openTuning', function(source)
         Config.Notify('error', Config.ErrorMessages.not_driver)
         return
     end
+    
+    -- Check if player is at a tuning location
+    local atTuningLocation, locationName = isAtTuningLocation()
+    if not atTuningLocation then
+        Config.Notify('error', Config.ErrorMessages.not_at_tuning_location)
+        return
+    end
+    
+    if locationName then
+        Config.Notify('success', 'Welcome to ' .. locationName)
+    end
 
     local mods = getAvailableModifications()
     createModificationMenu(mods)
@@ -230,7 +268,8 @@ AddEventHandler('vehicleTuning:applyModification', function(modType, level, colo
         SetVehicleCustomSecondaryColour(cache.vehicle, colorData.r, colorData.g, colorData.b)
         success = true
     elseif modType == 'pearlescent_color' and colorData then
-        SetVehicleExtraColours(cache.vehicle, GetVehicleExtraColours(cache.vehicle), colorData.r)
+        local _, wheelColor = GetVehicleExtraColours(cache.vehicle)
+        SetVehicleExtraColours(cache.vehicle, colorData.r, wheelColor)
         success = true
     else
         success = applyModification(modType, level)
@@ -245,3 +284,20 @@ AddEventHandler('vehicleTuning:applyModification', function(modType, level, colo
         Config.Notify('error', 'Failed to apply modification.')
     end
 end)
+
+-- Add blips for tuning locations if enabled
+if Config.UseLocationRestrictions then
+    CreateThread(function()
+        for _, location in ipairs(Config.TuningLocations) do
+            local blip = AddBlipForCoord(location.coords.x, location.coords.y, location.coords.z)
+            SetBlipSprite(blip, 446) -- Mechanic blip
+            SetBlipDisplay(blip, 4)
+            SetBlipScale(blip, 0.7)
+            SetBlipColour(blip, 5) -- Yellow
+            SetBlipAsShortRange(blip, true)
+            BeginTextCommandSetBlipName("STRING")
+            AddTextComponentString(location.name)
+            EndTextCommandSetBlipName(blip)
+        end
+    end)
+end

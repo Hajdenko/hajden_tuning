@@ -3,8 +3,8 @@ games({ 'gta5' })
 lua54('yes')
 
 author('hajdenkoo')
-description('Simple Tuning System by hajdenkoo')
-version('1.0.1')
+description('Enhanced Tuning System by hajdenkoo')
+version('1.1.0')
 
 shared_scripts({
     '@ox_lib/init.lua',
@@ -12,10 +12,10 @@ shared_scripts({
 });
 
 server_scripts({
-    'server/*.lua',
+    'server.lua',
     'sv_config.lua'
 });
 
 client_scripts({
-    'client/*.lua'
+    'client.lua'
 });
